@@ -3,18 +3,14 @@ import threading
 import usb.core
 import usb.util
 import numpy as np
-from scipy.optimize import curve_fit
-import matplotlib.gridspec as gridspec
 from random import randint
-from matplotlib import pyplot as plt
-from matplotlib.animation import FuncAnimation
+from scipy.optimize import curve_fit
 
-# sample rate (ms)
-SAMPLE_RATE = 10
-FREQ = 1000/SAMPLE_RATE
+from pyqtgraph.Qt import QtGui, QtCore
+import pyqtgraph as pg
 
 # display only last N values
-MAX_VIEW = 200
+MAX_VIEW = 1000
 
 # dev = usb.core.find(idVendor=0x04d8, idProduct=0xfe78)
 # if dev.is_kernel_driver_active(0):
@@ -24,103 +20,93 @@ MAX_VIEW = 200
 def get_magnetic_field():
     # device.write(1, ':READ?<LF>')
     # data = device.read(0x81, 100, 100)
-    return time.time(), randint(0, 100)
+    return time.time(), randint(0,100)
     return time.time(), float(bytearray(list(data)).replace(b'\x00', b'').decode('utf-8'))
 
 
 def get_temperature():
-    return time.time(), randint(0, 100)
+    return time.time(), randint(0,100)
 
 
 def get_resistance():
-    return time.time(), randint(0, 100)
+    return time.time(), randint(0,100)
 
 
 times1, times2, times3 = [], [], []
 magnetic_field, resistance, temperature = [], [], []
 
-gs = gridspec.GridSpec(2, 2)
-fig = plt.figure()
-fig.suptitle(f"Settings | Sample Rate: {FREQ} / s | Display last {MAX_VIEW*SAMPLE_RATE} seconds")
+app = QtGui.QApplication([])
 
-manager = plt.get_current_fig_manager()
-manager.full_screen_toggle()
+window = pg.GraphicsWindow(title="Physics Lab 2 Data.")
+window.setBackground((238,238,228))
+window.showMaximized()
 
-ax1 = fig.add_subplot(gs[0,:])
-line1, = ax1.plot(times1, magnetic_field, "-",color="green")
+magnetic_field_plot = window.addPlot(title="Magnetic Field", color="red")
+resistance_plot = window.addPlot(title="Resistance")
+temperature_plot = window.addPlot(title="Temperature")
 
-ax2 = fig.add_subplot(gs[1,0])
-line2, = ax2.plot(times2, resistance, "-",color="brown")
-
-ax3 = fig.add_subplot(gs[1,1])
-line3, = ax3.plot(times3, temperature, "-",color="blue")
-
-ax1.set_title("Magnetic Field")
-ax1.set_xlabel("Time / s")
-ax1.set_ylabel("B / T")
-
-ax2.set_title("Resistance")
-ax2.set_xlabel("Time / s")
-ax2.set_ylabel(r"R / $\Omega$")
-
-ax3.set_title("Temperature")
-ax3.set_xlabel("Time / s")
-ax3.set_ylabel("T / K")
+curve1 = magnetic_field_plot.plot(pen="green")
+magnetic_field_plot.setLabel("left", "Magnetic Field", units="T")
+magnetic_field_plot.setLabel("bottom", "Time / s")
+magnetic_field_plot.getAxis("left").setTextPen("black")
+magnetic_field_plot.getAxis("bottom").setTextPen("black")
 
 
-def update1(frame):
-    global times1, magnetic_field
+curve2 = resistance_plot.plot(pen="brown")
+resistance_plot.setLabel("left", "Resistance", units="&Omega;")
+resistance_plot.setLabel("bottom", "Time / s")
+resistance_plot.getAxis("left").setTextPen("black")
+resistance_plot.getAxis("bottom").setTextPen("black")
+
+curve3 = temperature_plot.plot(pen="blue")
+temperature_plot.setLabel("left", "Temperature", units="K")
+temperature_plot.setLabel("bottom", "Time / s")
+temperature_plot.getAxis("left").setTextPen("black")
+temperature_plot.getAxis("bottom").setTextPen("black")
+
+
+def update1():
     t1, B = get_magnetic_field()
     t1 -= REF_TIME
 
     times1.append(t1)
     magnetic_field.append(B)
 
-    line1.set_data(times1[-MAX_VIEW:], magnetic_field[-MAX_VIEW:])
+    curve1.setData(times1[-MAX_VIEW:], magnetic_field[-MAX_VIEW:])
  
-    ax1.relim()
-    ax1.autoscale_view()
+    QtGui.QApplication.processEvents() 
 
-    return line1,
 
-def update2(frame):
-    global times2, resistance
+def update2():
     t2, R = get_resistance()
     t2 -= REF_TIME
 
     times2.append(t2)
     resistance.append(R)
 
-    line2.set_data(times2[-MAX_VIEW:], resistance[-MAX_VIEW:])
-
-    ax2.relim()
-    ax2.autoscale_view()
-
-    return line2,
+    curve2.setData(times2[-MAX_VIEW:], resistance[-MAX_VIEW:])
+    QtGui.QApplication.processEvents()
 
 
-def update3(frame):
-    global times3, temperature
+def update3():
     t3, T = get_temperature()
     t3 -= REF_TIME
 
     times3.append(t3)
     temperature.append(T)
 
-    line3.set_data(times3[-MAX_VIEW:], temperature[-MAX_VIEW:])
-
-    ax3.relim()
-    ax3.autoscale_view()
-
-    return line3,
+    curve3.setData(times3[-MAX_VIEW:], temperature[-MAX_VIEW:])
+    QtGui.QApplication.processEvents()
 
 
 REF_TIME = time.time()
-anim = FuncAnimation(fig, update1, interval=SAMPLE_RATE)
-anim2 = FuncAnimation(fig, update2, interval=SAMPLE_RATE)
-anim3 = FuncAnimation(fig, update3, interval=SAMPLE_RATE)
 
-plt.show()
+while True:
+    update1()
+    update2()
+    update3()
+
+pg.QtGui.QApplication.exec_()
 
 # b_file = open("magnetic_field.txt", "a")
 
