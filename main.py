@@ -3,6 +3,7 @@ import threading
 import usb.core
 import usb.util
 import numpy as np
+from scipy.optimize import curve_fit
 import matplotlib.gridspec as gridspec
 from random import randint
 from matplotlib import pyplot as plt
@@ -10,7 +11,7 @@ from matplotlib.animation import FuncAnimation
 
 # sample rate (ms)
 SAMPLE_RATE = 10
-REF_TIME = time.time()
+FREQ = 1000/SAMPLE_RATE
 
 # display only last N values
 MAX_VIEW = 200
@@ -40,7 +41,7 @@ magnetic_field, resistance, temperature = [], [], []
 
 gs = gridspec.GridSpec(2, 2)
 fig = plt.figure()
-fig.suptitle(f"Settings | Sample Rate: {1000/SAMPLE_RATE} / s | Display last {MAX_VIEW} values")
+fig.suptitle(f"Settings | Sample Rate: {FREQ} / s | Display last {MAX_VIEW*SAMPLE_RATE} seconds")
 
 manager = plt.get_current_fig_manager()
 manager.full_screen_toggle()
@@ -66,9 +67,6 @@ ax3.set_title("Temperature")
 ax3.set_xlabel("Time / s")
 ax3.set_ylabel("T / K")
 
-_times1, _times2, _times3 = [], [], []
-_B, _R, _T = [], [], []
-
 
 def update1(frame):
     global times1, magnetic_field
@@ -78,13 +76,7 @@ def update1(frame):
     times1.append(t1)
     magnetic_field.append(B)
 
-    _times1.append(t1)
-    _B.append(B)
-   
-    times1 =  times1[-MAX_VIEW:]
-    magnetic_field = magnetic_field[-MAX_VIEW:]
-
-    line1.set_data(times1, magnetic_field)
+    line1.set_data(times1[-MAX_VIEW:], magnetic_field[-MAX_VIEW:])
  
     ax1.relim()
     ax1.autoscale_view()
@@ -99,13 +91,7 @@ def update2(frame):
     times2.append(t2)
     resistance.append(R)
 
-    _times2.append(t2)
-    _R.append(R)
-
-    times2 = times2[-MAX_VIEW:]
-    resistance = resistance[-MAX_VIEW:]
-
-    line2.set_data(times2, resistance)
+    line2.set_data(times2[-MAX_VIEW:], resistance[-MAX_VIEW:])
 
     ax2.relim()
     ax2.autoscale_view()
@@ -121,13 +107,7 @@ def update3(frame):
     times3.append(t3)
     temperature.append(T)
 
-    _times3.append(t3)
-    _T.append(T)
-
-    times3 = times3[-MAX_VIEW:]
-    temperature = temperature[-MAX_VIEW:]
-
-    line3.set_data(times3, temperature)
+    line3.set_data(times3[-MAX_VIEW:], temperature[-MAX_VIEW:])
 
     ax3.relim()
     ax3.autoscale_view()
@@ -135,6 +115,7 @@ def update3(frame):
     return line3,
 
 
+REF_TIME = time.time()
 anim = FuncAnimation(fig, update1, interval=SAMPLE_RATE)
 anim2 = FuncAnimation(fig, update2, interval=SAMPLE_RATE)
 anim3 = FuncAnimation(fig, update3, interval=SAMPLE_RATE)
