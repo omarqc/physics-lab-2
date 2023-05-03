@@ -2,25 +2,25 @@ import time
 import threading
 import usb.core
 import usb.util
+import keyboard
 import numpy as np
 from random import randint
-from scipy.optimize import curve_fit
 
+from scipy.optimize import curve_fit
 from pyqtgraph.Qt import QtGui, QtCore
 import pyqtgraph as pg
 
 # display only last N values
-MAX_VIEW = 1000
+MAX_VIEW = 500
 
-# dev = usb.core.find(idVendor=0x04d8, idProduct=0xfe78)
-# if dev.is_kernel_driver_active(0):
-#     dev.detach_kernel_driver(0)
+dev = usb.core.find(idVendor=0x04d8, idProduct=0xfe78)
+if dev.is_kernel_driver_active(0):
+    dev.detach_kernel_driver(0)
 
 
-def get_magnetic_field():
-    # device.write(1, ':READ?<LF>')
-    # data = device.read(0x81, 100, 100)
-    return time.time(), randint(0,100)
+def get_magnetic_field(device):
+    device.write(1, ':READ?<LF>')
+    data = device.read(0x81, 100, 100)
     return time.time(), float(bytearray(list(data)).replace(b'\x00', b'').decode('utf-8'))
 
 
@@ -32,10 +32,18 @@ def get_resistance():
     return time.time(), randint(0,100)
 
 
+app = QtGui.QApplication([])
+
 times1, times2, times3 = [], [], []
 magnetic_field, resistance, temperature = [], [], []
 
-app = QtGui.QApplication([])
+
+def reset():
+    global times1, times2, times3
+    global magnetic_field, resistance, temperature
+    times1, times2, times3 = [], [], []
+    magnetic_field, resistance, temperature = [], [], []
+
 
 window = pg.GraphicsWindow(title="Physics Lab 2 Data.")
 window.setBackground((238,238,228))
@@ -64,15 +72,20 @@ temperature_plot.setLabel("bottom", "Time / s")
 temperature_plot.getAxis("left").setTextPen("black")
 temperature_plot.getAxis("bottom").setTextPen("black")
 
+FLAG = True
+
 
 def update1():
-    t1, B = get_magnetic_field()
+    t1, B = get_magnetic_field(dev)
     t1 -= REF_TIME
 
     times1.append(t1)
     magnetic_field.append(B)
 
-    curve1.setData(times1[-MAX_VIEW:], magnetic_field[-MAX_VIEW:])
+    curve1.setData(times1, magnetic_field)
+
+    X = times1[-MAX_VIEW:]
+    if FLAG: magnetic_field_plot.setRange(xRange=[min(X), max(X)])
  
     QtGui.QApplication.processEvents() 
 
@@ -84,7 +97,11 @@ def update2():
     times2.append(t2)
     resistance.append(R)
 
-    curve2.setData(times2[-MAX_VIEW:], resistance[-MAX_VIEW:])
+    curve2.setData(times2, resistance)
+
+    X = times2[-MAX_VIEW:]
+    if FLAG: resistance_plot.setRange(xRange=[min(X), max(X)])
+
     QtGui.QApplication.processEvents()
 
 
@@ -95,16 +112,28 @@ def update3():
     times3.append(t3)
     temperature.append(T)
 
-    curve3.setData(times3[-MAX_VIEW:], temperature[-MAX_VIEW:])
+    curve3.setData(times3, temperature)
+
+    X = times3[-MAX_VIEW:]
+    if FLAG: temperature_plot.setRange(xRange=[min(X), max(X)])
+
     QtGui.QApplication.processEvents()
 
 
 REF_TIME = time.time()
 
 while True:
-    update1()
-    update2()
-    update3()
+    if keyboard.is_pressed("space"):
+        FLAG = not FLAG
+
+    if keyboard.is_pressed("r"):
+        REF_TIME = time.time()
+        reset()
+    
+    else:
+        update1()
+        update2()
+        update3()
 
 pg.QtGui.QApplication.exec_()
 
