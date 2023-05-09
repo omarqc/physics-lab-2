@@ -77,15 +77,15 @@ def get_resistance(device):
 
 app = QtGui.QApplication([])
 
-times1, times2, times3 = [], [], []
-magnetic_field, resistance, temperature = [], [], []
+times1, times1y, times1z, times2, times3 = [], [], [], [], []
+B_mag, B_x, B_y, B_z, resistance, temperature = [], [], [], [], [], []
 
 
 def reset_data():
-    global times1, times2, times3
-    global magnetic_field, resistance, temperature
-    times1, times2, times3 = [], [], []
-    magnetic_field, resistance, temperature = [], [], []
+    global times1x, times1y, times1z, times2, times3
+    global B_x, B_y, B_z, resistance, temperature
+    times1, times1y, times1z, times2, times3 = [], [], [], [], []
+    B_mag, B_x, B_y, B_z, resistance, temperature = [], [], [], [], [], []
 
 
 window = pg.GraphicsWindow(title="Physics Lab 2 Data.")
@@ -119,22 +119,31 @@ PAUSE_FLAG = True
 
 
 def update1():
-    t1, B = get_magnetic_field(DEVICES["gaussmeter0"])
-    t1 -= REF_TIME
+    t1x, Bx = get_magnetic_field(DEVICES["gaussmeter0"])
+    t1y, By = get_magnetic_field(DEVICES["gaussmeter1"])
+    t1z, Bz = get_magnetic_field(DEVICES["gaussmeter2"])
+    t1x -= REF_TIME
+    t1y -= REF_TIME
+    t1z -= REF_TIME
 
-    times1.append(t1)
-    magnetic_field.append(B)
+    times1x.append(t1x)
+    times1y.append(t1y)
+    times1z.append(t1z)
+    B_x.append(Bx)
+    B_y.append(By)
+    B_z.append(Bz)
+    B_mag.append((Bx**2 + By**2 + Bz**2)**0.5)
 
-    curve1.setData(times1, magnetic_field)
+    curve1.setData(times1y, B_mag)
 
-    X = times1[-MAX_VIEW:]
+    X = times1y[-MAX_VIEW:]
     if PAUSE_FLAG: magnetic_field_plot.setRange(xRange=[min(X), max(X)])
  
     QtGui.QApplication.processEvents() 
 
 
 def update2():
-    t2, R = get_resistance(DEVICES["ohmmeter"])
+    t2, R = get_resistance(DEVICES["ohmmeter0"])
     t2 -= REF_TIME
 
     times2.append(t2)
@@ -183,3 +192,11 @@ while True:
         update3()
 
 pg.QtGui.QApplication.exec_()
+
+# Save data to files
+b_file = open("magnetic_field.txt", "a")
+b_file.write("TimeX,TimeY,TimeZ,Bx,By,Bz")
+for i in range(len(times1x)):
+    b_file.write(f"{times1x[i]},{times1y[i]},{times1z[i]},{B_x[i]},{B_y[i]},{B_z[i]}")
+
+b_file.close()
