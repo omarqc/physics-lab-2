@@ -2,6 +2,7 @@ import time
 import threading
 import usb.core
 import usb.util
+import pyvisa
 import keyboard
 import numpy as np
 from random import randint
@@ -12,27 +13,36 @@ import pyqtgraph as pg
 
 # display only last N values
 MAX_VIEW = 350
+PAUSE_FLAG = True
 
 description = {
     "gaussmeter": {
         "name": "MAGSYS HGM09s",
         "idVendor": 0x04d8,
         "idProduct": 0xfe78
-    },
-    "ohmmeter": {
-        "name": "Keithley 2000 Multimeter",
-        "idVendor": 0x0403,
-        "idProduct": 0x6001
     }
 }
 
+FIND_ALL = False
 DEVICES = {}
 
+def detach_kernel_driver(dev, name):
+    try:
+        if DEVICES[name].is_kernel_driver_active(0):
+            DEVICES[name].detach_kernel_driver(0)
+                
+        print(f"Succesfully connected to '{name}'")
+
+    except:
+        print(f"Error in connecting to '{name}'")
+
+# Attempt connection to MAGSYS HGM09s gaussmeters
 for d_type in list(description.keys()):
     IDV = description[d_type]["idVendor"]
     IDP = description[d_type]["idProduct"]
 
-    devices = tuple(usb.core.find(idVendor={IDV}, idProduct={IDP}, find_all=True))
+    devices = usb.core.find(idVendor=IDV, idProduct=IDP, find_all=FIND_ALL)
+    devices = tuple(devices)
     try: 
         # will give error if device variable is None (not found)
         device[0]
@@ -45,17 +55,27 @@ for d_type in list(description.keys()):
     for sub_device in devices:
         name = d_type + str(i)
         DEVICES[name] = sub_device
-        try:
-            if DEVICES[name].is_kernel_driver_active(0):
-                DEVICES[name].detach_kernel_driver(0)
-            
-            print(f"Succesfully connected to '{NAMES[i]}' ({i})")
-
-        except:
-            print(f"Error in connecting to '{NAMES[i]}'")
-            exit()
+        detach_kernel_driver(DEVICES[name], description[d_type]['name']+str(i))
 
         i += 1
+
+# Attempt connection to Keithley 2000 Multimeter
+rm = pyvisa.ResourceManager('@py')
+print(rm.list_resources())
+try:
+    keithley = rm.open_resource("ASRL/dev/ttyUSB0::INSTR", timeout=5000)
+    keithley.baud_rate = 19200
+    keithley.data_bits = 8
+    keithley.parity = pyvisa.constants.Parity.none
+    keithley.stop_bits = pyvisa.constants.StopBits.one
+
+    print(f"Succesfully connected to Keithley 2000 Multimeter")
+except Exception as e:
+    keithley=None
+    print(e)
+    print(f"Error in connecting to Keithley 2000 Multimeter")
+
+DEVICES["ohmmeter"] = keithley
 
 
 def get_magnetic_field(device):
@@ -69,22 +89,21 @@ def get_temperature():
 
 
 def get_resistance(device):
-    device.write(2, ':MEASure:FRESistance?<LF>')
-    data = device.read(0x81, 100, 100)
-    print(data)
+    data = device.query(":MEASure:FRESistance?")
+    print(data.decode('utf-8'))
     return time.time(), randint(0,100)
 
 
 app = QtGui.QApplication([])
 
-times1, times1y, times1z, times2, times3 = [], [], [], [], []
+times1x, times1y, times1z, times2, times3 = [], [], [], [], []
 B_mag, B_x, B_y, B_z, resistance, temperature = [], [], [], [], [], []
 
 
 def reset_data():
     global times1x, times1y, times1z, times2, times3
     global B_x, B_y, B_z, resistance, temperature
-    times1, times1y, times1z, times2, times3 = [], [], [], [], []
+    times1x, times1y, times1z, times2, times3 = [], [], [], [], []
     B_mag, B_x, B_y, B_z, resistance, temperature = [], [], [], [], [], []
 
 
@@ -92,84 +111,54 @@ window = pg.GraphicsWindow(title="Physics Lab 2 Data.")
 window.setBackground((238,238,228))
 window.showMaximized()
 
-magnetic_field_plot = window.addPlot(title="Magnetic Field", color="red")
-resistance_plot = window.addPlot(title="Resistance")
-temperature_plot = window.addPlot(title="Temperature")
 
-curve1 = magnetic_field_plot.plot(pen="green")
-magnetic_field_plot.setLabel("left", "Magnetic Field", units="T")
-magnetic_field_plot.setLabel("bottom", "Time / s")
-magnetic_field_plot.getAxis("left").setTextPen("black")
-magnetic_field_plot.getAxis("bottom").setTextPen("black")
+def make_plot(name, units, color):
+    plot = window.addPlot(title=name)
+    curve = plot.plot(pen=color)
+    plot.setLabel("left", name, units=units)
+    plot.setLabel("bottom", "Time / s")
+    plot.getAxis("left").setTextPen("black")
+    plot.getAxis("bottom").setTextPen("black")
 
+    return curve, plot
 
-curve2 = resistance_plot.plot(pen="brown")
-resistance_plot.setLabel("left", "Resistance", units="&Omega;")
-resistance_plot.setLabel("bottom", "Time / s")
-resistance_plot.getAxis("left").setTextPen("black")
-resistance_plot.getAxis("bottom").setTextPen("black")
-
-curve3 = temperature_plot.plot(pen="blue")
-temperature_plot.setLabel("left", "Temperature", units="K")
-temperature_plot.setLabel("bottom", "Time / s")
-temperature_plot.getAxis("left").setTextPen("black")
-temperature_plot.getAxis("bottom").setTextPen("black")
-
-PAUSE_FLAG = True
+curve1, magnetic_field_plot = make_plot("Magnetic Field", "T", "green")
+curve2, resistance_plot = make_plot("Resistance", "&Omega;", "brown")
+curve3, temperature_plot = make_plot("Temperature", "K", "blue")
 
 
-def update1():
-    t1x, Bx = get_magnetic_field(DEVICES["gaussmeter0"])
-    t1y, By = get_magnetic_field(DEVICES["gaussmeter1"])
-    t1z, Bz = get_magnetic_field(DEVICES["gaussmeter2"])
-    t1x -= REF_TIME
-    t1y -= REF_TIME
-    t1z -= REF_TIME
+def update(N=1, x:list=[], y:list=[], devs:list=[], func="", curve="", plot="", mag:list=[], ON=True):
+    # Get 3 measurements from the 3 gaussmeters
+    # timestamp, value = get_magnetic_field(device)
 
-    times1x.append(t1x)
-    times1y.append(t1y)
-    times1z.append(t1z)
-    B_x.append(Bx)
-    B_y.append(By)
-    B_z.append(Bz)
-    B_mag.append((Bx**2 + By**2 + Bz**2)**0.5)
+    values = []
+    for i in range(N):
+        if ON:
+            t, v = func(devs[i])
+        else:
+            # if ON is False, simulate data with random values
+            t, v = time.time(), randint(0, 100)
 
-    curve1.setData(times1y, B_mag)
+        # append x values to the lists given as parameters
+        x[i].append(t - REF_TIME)
+        # append y values to the lists given as parameters
+        y[i].append(v)
+        # append y values to another list for internal reference
+        values.append(v)
 
-    X = times1y[-MAX_VIEW:]
-    if PAUSE_FLAG: magnetic_field_plot.setRange(xRange=[min(X), max(X)])
+    mag.append(np.linalg.norm(values))
+
+    if N==1:
+        X = x[0][-MAX_VIEW:]
+        curve.setData(x[0], y[0])
+    else:
+        # for case of magnetometer, plot time of middle reading y. (x, y, z)
+        X = x[1][-MAX_VIEW:]
+        curve.setData(x[1], mag)
+
+    if PAUSE_FLAG: plot.setRange(xRange=[min(X), max(X)])
  
     QtGui.QApplication.processEvents() 
-
-
-def update2():
-    t2, R = get_resistance(DEVICES["ohmmeter0"])
-    t2 -= REF_TIME
-
-    times2.append(t2)
-    resistance.append(R)
-
-    curve2.setData(times2, resistance)
-
-    X = times2[-MAX_VIEW:]
-    if PAUSE_FLAG: resistance_plot.setRange(xRange=[min(X), max(X)])
-
-    QtGui.QApplication.processEvents()
-
-
-def update3():
-    t3, T = get_temperature()
-    t3 -= REF_TIME
-
-    times3.append(t3)
-    temperature.append(T)
-
-    curve3.setData(times3, temperature)
-
-    X = times3[-MAX_VIEW:]
-    if PAUSE_FLAG: temperature_plot.setRange(xRange=[min(X), max(X)])
-
-    QtGui.QApplication.processEvents()
 
 
 REF_TIME = time.time()
@@ -185,18 +174,8 @@ while True:
     
     else:
         # make sure that the 3 gaussmeters have been connected.
-        update1()
-        update2()
+        update(N=3, x=[times1x, times1y, times1z], y=[B_x, B_y, B_z], devs=[], func=get_magnetic_field, 
+            curve=curve1, plot=magnetic_field_plot, mag=B_mag, ON=False)
 
-        # still have to add code for thermometer (actually just reading resistance -> temperature)
-        update3()
-
-pg.QtGui.QApplication.exec_()
-
-# Save data to files
-b_file = open("magnetic_field.txt", "a")
-b_file.write("TimeX,TimeY,TimeZ,Bx,By,Bz")
-for i in range(len(times1x)):
-    b_file.write(f"{times1x[i]},{times1y[i]},{times1z[i]},{B_x[i]},{B_y[i]},{B_z[i]}")
-
-b_file.close()
+        update(N=1, x=[times2], y=[resistance], devs=[], func=get_resistance, curve=curve2, plot=resistance_plot, ON=False)
+        update(N=1, x=[times3], y=[temperature], devs=[], func=get_temperature, curve=curve3, plot=temperature_plot, ON=False)
