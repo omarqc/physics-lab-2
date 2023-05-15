@@ -42,13 +42,18 @@ for d_type in list(description.keys()):
     IDP = description[d_type]["idProduct"]
 
     devices = usb.core.find(idVendor=IDV, idProduct=IDP, find_all=FIND_ALL)
-    devices = tuple(devices)
+    
     try: 
         # will give error if device variable is None (not found)
         device[0]
+        try:
+            devices = tuple(devices)
+        except:
+            pass
+
     except:
         print(f"Device {d_type} not found, exiting")
-        exit()
+        break
 
     # this is for case of >1 gaussmeter
     i = 0
@@ -102,7 +107,7 @@ B_mag, B_x, B_y, B_z, resistance, temperature = [], [], [], [], [], []
 
 def reset_data():
     global times1x, times1y, times1z, times2, times3
-    global B_x, B_y, B_z, resistance, temperature
+    global B_mag, B_x, B_y, B_z, resistance, temperature
     times1x, times1y, times1z, times2, times3 = [], [], [], [], []
     B_mag, B_x, B_y, B_z, resistance, temperature = [], [], [], [], [], []
 
@@ -168,14 +173,42 @@ while True:
         PAUSE_FLAG = not PAUSE_FLAG
 
     if keyboard.is_pressed("r"):
-        # reset time and data arrays
+        # Reset ALL the data (x and y) arrays
         REF_TIME = time.time()
         reset_data()
     
     else:
-        # make sure that the 3 gaussmeters have been connected.
-        update(N=3, x=[times1x, times1y, times1z], y=[B_x, B_y, B_z], devs=[], func=get_magnetic_field, 
-            curve=curve1, plot=magnetic_field_plot, mag=B_mag, ON=False)
+        try:
+            # graph update function for Gaussmeters
+            update(N=3, x=[times1x, times1y, times1z], y=[B_x, B_y, B_z], devs=[], func=get_magnetic_field, 
+                curve=curve1, plot=magnetic_field_plot, mag=B_mag, ON=False)
 
-        update(N=1, x=[times2], y=[resistance], devs=[], func=get_resistance, curve=curve2, plot=resistance_plot, ON=False)
-        update(N=1, x=[times3], y=[temperature], devs=[], func=get_temperature, curve=curve3, plot=temperature_plot, ON=False)
+            # graph update function for Ohmmeter
+            update(N=1, x=[times2], y=[resistance], devs=[], func=get_resistance, curve=curve2, plot=resistance_plot, ON=False)
+
+            # graph update function for Temperature Sensor
+            update(N=1, x=[times3], y=[temperature], devs=[], func=get_temperature, curve=curve3, plot=temperature_plot, ON=False)
+
+        except KeyboardInterrupt:
+            break
+
+
+print("Logging data to files (DO NOT CANCEL)...", end="")
+# Save data to files
+b_file = open("magnetic_field.txt", "a")
+b_file.write("TimeX,TimeY,TimeZ,Bx,By,Bz")
+for i in range(len(times1x)):
+    b_file.write(f"\n{times1x[i]},{times1y[i]},{times1z[i]},{B_x[i]},{B_y[i]},{B_z[i]}")
+
+b_file.close()
+
+
+# Save data to files
+r_file = open("resistance.txt", "a")
+r_file.write("Time,Resistance")
+for i in range(len(times2)):
+    r_file.write(f"\n{times2[i]},{resistance[i]}")
+
+r_file.close()
+
+print(" DONE")
