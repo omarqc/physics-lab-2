@@ -8,4 +8,4 @@
 
 ![](simulation.png)
 
-![](arduino_setup.png)
+![](arduino_setup.jpg)
