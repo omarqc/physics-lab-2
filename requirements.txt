@@ -1,3 +1,5 @@
 pyusb
 keyboard
 pyserial
+pyvisa-py
+pyqtgraph
