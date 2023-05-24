@@ -7,3 +7,5 @@
 
 
 ![](simulation.png)
+
+![](arduino_setup.png)
