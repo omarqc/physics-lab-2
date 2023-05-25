@@ -1,11 +1,12 @@
 import time
+import datetime
 import threading
 import usb.core
 import usb.util
-import pyvisa
 import serial
 import keyboard
 import numpy as np
+import pyvisa
 from random import randint
 from threading import Thread
 
@@ -54,11 +55,14 @@ def reset_data():
 def get_magnetic_field(device):
     device.write(1, ':READ?')
     data = device.read(0x81, 100, 100)
-    return time.time(), float(bytearray(list(data)).replace(b'\x00', b'').decode('utf-8'))
+    data = float(bytearray(list(data)).replace(b'\x00', b'').decode('utf-8'))
+    # print(data)
+    return time.time(), data
 
 
 def get_temperature(device):
     data = float(device.readline()[:-2].decode('utf-8'))
+    # print(data)
     if data < T_R0:
         data = np.roots([T_R0*T_C, -100*T_C*T_R0, T_R0*T_B, T_R0*T_A,T_R0-float(data)])[-1].real
     elif data >= T_R0:
@@ -145,6 +149,7 @@ def connect_arduino():
     print("Successfully connected to Arduino")
 
 
+connect_keithley()
 connect_arduino()
 
 window = pg.GraphicsLayoutWidget(title="Physics Lab 2 Data.")
@@ -238,21 +243,32 @@ while True:
         try:
             # graph update function for Gaussmeters
             update(N=3, x=[times1x, times1y, times1z], y=[B_x, B_y, B_z], devs=[DEVICES["gaussmeter0"], DEVICES["gaussmeter1"],
-                DEVICES["gaussmeter2"]], func=get_magnetic_field, curve=curve1, plot=magnetic_field_plot, mag=B_mag, ON=False)
+                DEVICES["gaussmeter2"]], func=get_magnetic_field, curve=curve1, plot=magnetic_field_plot, mag=B_mag, ON=True)
+
+
+            # uncomment for using only 1 gaussmeter (and comment the one above)
+            # update(N=1, x=[times1x], y=[B_x], devs=[DEVICES["gaussmeter0"], func=get_magnetic_field, curve=curve1,
+            #     plot=magnetic_field_plot, mag=B_mag, ON=True)
 
             # graph update function for Ohmmeter
-            update(N=1, x=[times2], y=[resistance], devs=[DEVICES["ohmmeter"]], func=get_resistance, curve=curve2, plot=resistance_plot, ON=True)
+            update(N=1, x=[times2], y=[resistance], devs=[DEVICES["ohmmeter"]], func=get_resistance, curve=curve2,
+                plot=resistance_plot, ON=True)
 
             # # graph update function for Temperature Sensor
-            update(N=1, x=[times3], y=[temperature], devs=[DEVICES["thermometer"]], func=get_temperature, curve=curve3, plot=temperature_plot, ON=True)
+            update(N=1, x=[times3], y=[temperature], devs=[DEVICES["thermometer"]], func=get_temperature, curve=curve3,
+                plot=temperature_plot, ON=True)
 
-        except KeyboardInterrupt:
+        except:
+            # If there is any error, break off loop without cancelling program
+            # and proceed to saving data to files
             break
 
 print("\nLogging data to files (DO NOT CANCEL)...", end="")
 
+data_id = datetime.datetime.today().strftime("__%d_%m-%H_%M_%S")
+
 # Save data to files
-b_file = open("magnetic_field.txt", "a")
+b_file = open(f"magnetic_field{data_id}.txt", "a")
 b_file.write("TimeX,TimeY,TimeZ,Bx,By,Bz")
 for i in range(len(times1x)):
     b_file.write(f"\n{times1x[i]},{times1y[i]},{times1z[i]},{B_x[i]},{B_y[i]},{B_z[i]}")
@@ -264,7 +280,7 @@ for i in range(len(times1x)):
 b_file.close()
 
 
-r_file = open("resistance.txt", "a")
+r_file = open(f"resistance.txt{data_id}", "a")
 r_file.write("Time,Resistance")
 for i in range(len(times2)):
     r_file.write(f"\n{times2[i]},{resistance[i]}")
@@ -272,11 +288,11 @@ for i in range(len(times2)):
 r_file.close()
 
 
-t_file = open("temperature.txt", "a")
+t_file = open(f"temperature.txt{data_id}", "a")
 t_file.write("Time,Resistance,Temperature")
 for i in range(len(times3)):
-    R = temperature[i]
-    t_file.write(f"\n{times3[i]},{R},{np.roots([T_R0*T_C, -100*T_C*T_R0, T_R0*T_B, T_R0*T_A, T_R0 - R])[-1].real}")
+    T = temperature[i]
+    t_file.write(f"\n{times3[i]},{T}")
 
 t_file.close()
 
