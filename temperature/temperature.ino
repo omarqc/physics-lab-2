@@ -1,5 +1,5 @@
 #define R_REF 1000.0
-#define AVERAGES 30
+#define AVERAGES 10
 
 void setup() {
   Serial.begin(9600);
@@ -12,7 +12,7 @@ void loop()
     static float R = 0;
     static uint8_t i = 0;
     adc_reading = analogRead(A0);
-    resistance = R_REF*adc_reading/(1024.0-adc_reading);
+    resistance = R_REF * adc_reading/(1024.0 - adc_reading);
     R = R + resistance;
     i++;
     if (i==AVERAGES)
@@ -21,6 +21,5 @@ void loop()
       R = 0;
       i = 0;
     }
-    
-    delay(500/AVERAGES);
+    delay(250/AVERAGES); // 4 per second
 }
