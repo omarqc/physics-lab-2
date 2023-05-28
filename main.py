@@ -64,9 +64,9 @@ def get_temperature(device):
     data = float(device.readline()[:-2].decode('utf-8'))
     # print(data)
     if data < T_R0:
-        data = np.roots([T_R0*T_C, -100*T_C*T_R0, T_R0*T_B, T_R0*T_A,T_R0-float(data)])[-1].real
+        data = np.roots([T_R0*T_C, -100*T_C*T_R0, T_R0*T_B, T_R0*T_A,T_R0-float(data)])[-1].real + 273.15 # to kelvin
     elif data >= T_R0:
-        data = np.roots([T_R0*T_B, T_R0*T_A,T_R0-float(data)])[-1].real
+        data = np.roots([T_R0*T_B, T_R0*T_A,T_R0-float(data)])[-1].real + 273.15
 
     return time.time(), data
 
@@ -127,16 +127,19 @@ def connect_keithley():
     rm = pyvisa.ResourceManager('@py')
     print(rm.list_resources())
     try:
-        keithley = rm.open_resource("ASRL/dev/ttyUSB0::INSTR", timeout=5000)
-        keithley.baud_rate = 19200
+        keithley = rm.open_resource("ASRL/dev/ttyUSB0::INSTR", resource_pyclass=SerialInstrument)
+        keithley.baud_rate = 9600
         keithley.data_bits = 8
         keithley.parity = pyvisa.constants.Parity.none
         keithley.stop_bits = pyvisa.constants.StopBits.one
+        keithley.read_termination = '\r'
+        keithley.timeout = 5000
+        keithley.chunk_size = 102480
 
         print(f"Succesfully connected to Keithley 2000 Multimeter")
-        
+
     except Exception as e:
-        keithley=None
+        keithley = None
         print(e)
         print(f"Error in connecting to Keithley 2000 Multimeter")
 
