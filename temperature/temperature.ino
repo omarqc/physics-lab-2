@@ -7,19 +7,20 @@ void setup() {
 
 void loop()
 {
-    float resistance;
-    uint16_t adc_reading;
-    static float R = 0;
-    static uint8_t i = 0;
-    adc_reading = analogRead(A0);
-    resistance = R_REF * adc_reading/(1024.0 - adc_reading);
-    R = R + resistance;
-    i++;
-    if (i==AVERAGES)
+  while(Serial.available)
+  {
+    if (Serial.read() == 'r')
     {
-      Serial.println(R/AVERAGES);
-      R = 0;
-      i = 0;
+      Serial.println(get_resistance());
     }
-    delay(250/AVERAGES); // 4 per second
+  }
+  delay(5);
+}
+
+float get_resistance()
+{
+  float r;
+  adc = analogRead(A0);
+  r = R_REF * adc/(1024.0 - adc);
+  return r;
 }
