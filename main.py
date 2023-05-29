@@ -34,6 +34,7 @@ Example: DEVICES["gaussmeter0"] or DEVICES["thermometer"]
 """
 DEVICES = {}
 
+ARDUINO_DATA_ON_TRIGGER = True
 ARDUINO_PORT = "/dev/ttyACM0"
 T_R0 = 100
 T_A = 3.9083e-3
@@ -61,14 +62,24 @@ def get_magnetic_field(device):
 
 
 def get_temperature(device):
-    data = float(device.readline()[:-2].decode('utf-8'))
+    if ARDUINO_DATA_ON_TRIGGER:
+        device.write(bytes('r', 'utf-8'))
+    
+    data = device.readline()[:-2].decode('utf-8').split(',')
+    t = float(data[0]) # arduino time very closely equal to time.time()-REF_TIME
+    data = float(data[1])
     # print(data)
     if data < T_R0:
         data = np.roots([T_R0*T_C, -100*T_C*T_R0, T_R0*T_B, T_R0*T_A,T_R0-float(data)])[-1].real + 273.15 # to kelvin
     elif data >= T_R0:
         data = np.roots([T_R0*T_B, T_R0*T_A,T_R0-float(data)])[-1].real + 273.15
 
-    return time.time(), data
+    return t, data
+
+
+def begin_thermistor():
+    DEVICE["thermometer"].write(bytes('s', 'utf-8'))
+    return "Starting Arduino..."
 
 
 def get_resistance(device):
@@ -232,6 +243,7 @@ def update(N=1, x=[], y=[], func="", devs=[], curve="", plot="", mag=[], ON=True
 
 
 REF_TIME = time.time()
+print(begin_thermistor()) # Start running Arduino thermistor code
 
 while True:
     if keyboard.is_pressed("space"):
