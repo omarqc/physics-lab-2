@@ -73,9 +73,9 @@ def get_temperature(device):
     data = float(data[1]) # ms to s
     # print(data)
     if data < T_R0:
-        data = np.roots([T_R0*T_C, -100*T_C*T_R0, T_R0*T_B, T_R0*T_A,T_R0-float(data)])[-1].real + 273.15 # to kelvin
+        data = np.roots([T_R0*T_C, -100*T_C*T_R0, T_R0*T_B, T_R0*T_A,T_R0-float(data)])[-1].real
     elif data >= T_R0:
-        data = np.roots([T_R0*T_B, T_R0*T_A,T_R0-float(data)])[-1].real + 273.15
+        data = np.roots([T_R0*T_B, T_R0*T_A,T_R0-float(data)])[-1].real
 
     return t, data
 
@@ -279,8 +279,8 @@ while True:
                     #plot=magnetic_field_plot, mag=B_mag, ON=False)
 
             # graph update function for Ohmmeter
-            update(N=1, x=[times2], y=[resistance], devs=[DEVICES["ohmmeter"]], func=get_resistance, curve=curve2,
-                    plot=resistance_plot, ON=True)
+            # update(N=1, x=[times2], y=[resistance], devs=[DEVICES["ohmmeter"]], func=get_resistance, curve=curve2,
+            #         plot=resistance_plot, ON=True)
 
             # graph update function for Temperature Sensor
             update(N=1, x=[times3], y=[temperature], devs=[DEVICES["thermometer"]], func=get_temperature, curve=curve3,
