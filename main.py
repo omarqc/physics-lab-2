@@ -9,8 +9,6 @@ import numpy as np
 import pyvisa
 from random import randint
 from threading import Thread
-
-# from scipy.optimize import curve_fit
 from pyqtgraph.Qt import QtGui, QtCore
 import pyqtgraph as pg
 
@@ -271,14 +269,14 @@ while True:
         try:
             # graph update function for Gaussmeters
             # update(N=3, x=[times1x, times1y, times1z], y=[B_x, B_y, B_z], devs=[DEVICES["gaussmeter0"], DEVICES["gaussmeter1"],
-                    #DEVICES["gaussmeter2"]], func=get_magnetic_field, curve=curve1, plot=magnetic_field_plot, mag=B_mag, ON=True)
+            #         DEVICES["gaussmeter2"]], func=get_magnetic_field, curve=curve1, plot=magnetic_field_plot, mag=B_mag, ON=True)
 
 
-            # uncomment for using only 1 gaussmeter (and comment the one above)
-            # update(N=1, x=[times1x], y=[B_x], devs=[], func=get_magnetic_field, curve=curve1,
-                    #plot=magnetic_field_plot, mag=B_mag, ON=False)
+            # # uncomment for using only 1 gaussmeter (and comment the one above)
+            # # update(N=1, x=[times1x], y=[B_x], devs=[], func=get_magnetic_field, curve=curve1,
+            #         #plot=magnetic_field_plot, mag=B_mag, ON=False)
 
-            # graph update function for Ohmmeter
+            # # graph update function for Ohmmeter
             # update(N=1, x=[times2], y=[resistance], devs=[DEVICES["ohmmeter"]], func=get_resistance, curve=curve2,
             #         plot=resistance_plot, ON=True)
 
@@ -302,7 +300,7 @@ data_id = datetime.datetime.today().strftime("__%d_%m-%H_%M_%S")
 
 # Save data to files
 try:
-    b_file = open(f"data/magnetic_field{data_id}.txt", "a")
+    b_file = open(f"data/magnetic_field/magnetic_field{data_id}.txt", "a")
     b_file.write("TimeX,TimeY,TimeZ,Bx,By,Bz")
     for i in range(len(times1x)):
         b_file.write(f"\n{times1x[i]},{times1y[i]},{times1z[i]},{B_x[i]},{B_y[i]},{B_z[i]}")
@@ -317,7 +315,7 @@ except:
     print("\nError logging magnetic field.")
 
 try:
-    r_file = open(f"data/resistance.txt{data_id}", "a")
+    r_file = open(f"data/resistance/resistance.txt{data_id}", "a")
     r_file.write("Time,Resistance")
     for i in range(len(times2)):
         r_file.write(f"\n{times2[i]},{resistance[i]}")
@@ -329,7 +327,7 @@ except:
 
 
 try:
-    t_file = open(f"data/temperature.txt{data_id}", "a")
+    t_file = open(f"data/temperature/temperature.txt{data_id}", "a")
     t_file.write("Time,Resistance,Temperature")
     for i in range(len(times3)):
         T = temperature[i]
