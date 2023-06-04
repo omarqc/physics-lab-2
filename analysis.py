@@ -9,16 +9,19 @@ from matplotlib import pyplot as plt
 import os
 import math
 
-INDEPENDENT = False
+INDEPENDENT = True
 LEGEND = True
-MOVING_AVERAGE = 20
+MOVING_AVERAGE = 0
 FILTER = "31_05"
 
 FILTER_BY_RUN = False
+EXCLUDE_RUN_FILTER = False
 RUN_FILTER = [3,10,11,12]
 
-SHOW_RAW_DATA = True
-SHOW_DERIVATIVE = False
+EXCLUDE_RUNS = []
+
+SHOW_RAW_DATA = False
+SHOW_DERIVATIVE = True
 
 SHOW_77K_RESISTANCE = False
 SHOW_PEAK_DURATION = False
@@ -27,17 +30,20 @@ FILTER_MAGNET = False
 PLOT_DISTANCE_RESISTANCE = False
 FIT_EXP_CURVE = False
 
+
+B_PEAKS_31 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
 windows = []
 
 colors = ["red", "green", "blue", "black", "orange", "violet", "turquoise", "lightgreen", "pink", "yellow","yellowgreen","gray","lightgray"]
 
-folders = ["resistance", "magnetic_field"]
-units = ["Ω", "T"]
-labels=["Resistance", "Field_Mag"]
+# folders = ["resistance", "magnetic_field"]
+# units = ["Ω", "T"]
+# labels=["Resistance", "Field_Mag"]
 
-# folders = ["magnetic_field"]
-# units = ["T"]
-# labels=["Field_Mag"]
+folders = ["magnetic_field"]
+units = ["T"]
+labels=["Field_Mag"]
 
 def resistance_fit(x, a, b):
     return a*np.exp(-b*x)
@@ -54,13 +60,13 @@ def cut_data(X, Y, a=0, b=0):
 
 
 def create_window(name, d=False):
-    labelStyle = {'color': '#FFF', 'font-size': '20pt'}
     window = pg.GraphicsLayoutWidget()
     window.setWindowTitle(name)
     window.setBackground((255,255,255))
     x = ""
     if d: x = " derivative"
-    plot = window.addPlot(title=f"<h1 style='color:black;'>{FILTER} {name.capitalize()}{x} data</h1>")
+    # plot = window.addPlot(title=f"<h1 style='color:black;'>{FILTER} {name.capitalize()}{x} data</h1>")
+    plot = window.addPlot()
 
     if not PLOT_DISTANCE_RESISTANCE:
         x_l = "Time"
@@ -69,9 +75,7 @@ def create_window(name, d=False):
         x_l = "Distance"
         x_u = "cm"
 
-    # plot.setLabel("left", f"<span style='font-size:20px;'>{name} / {units[j]}</span>", size=30)
-    # plot.setLabel("bottom", f"<span style='font-size:20px;'>{x_l} / {x_u}</span>")
-
+    labelStyle = {'color': '#FFF', 'font-size': '20pt'}
     plot.setLabel("left", name, units=units[j], **labelStyle)
     plot.setLabel("bottom", x_l, units=x_u, **labelStyle)
 
@@ -100,10 +104,12 @@ for folder in folders:
             return pg.mkPen(colors[i], width=w)
 
         run = filename.replace(".csv", "").split("Run")[1]
+        if int(run) in EXCLUDE_RUNS: continue
         if FILTER_BY_RUN:
             if int(run) not in RUN_FILTER: continue
         else:
-            if int(run) in RUN_FILTER: continue
+            if EXCLUDE_RUN_FILTER:
+                if int(run) in RUN_FILTER: continue
 
         if INDEPENDENT:
             window, plot = create_window(name, d=SHOW_DERIVATIVE)
@@ -141,12 +147,17 @@ for folder in folders:
             else:
                 magnet_distance = row.split("=")[-1]
 
-        label = f"{filename.split('/')[-1][:5]}: Run {run}, mag_distance={magnet_distance}"
+        if magnet_distance: extra = f", mag_distance={magnet_distance} cm"
+        else: extra = ""
+        label = f"{filename.split('/')[-1][:5]}: Run {run}{extra}"
         x = np.array(x,dtype=np.float64)
         y = np.array(y,dtype=np.float64)
 
         if folder == "magnetic_field":
+            y = y/10**6 # microtesla to T
             x, y = cut_data(x, y, a=10, b=10)
+            x = x[::200]
+            y = y[::200]
         
         if MOVING_AVERAGE:
             if folder == "magnetic_field":
@@ -165,22 +176,29 @@ for folder in folders:
             der_77k = derivative[:N_min_peak]
             y_77k = y[:N_min_peak]
             start_peak = np.where(der_77k==max(der_77k))[0][0] - 5 # subtract a few data points to avoid start of peak
-            if int(run) == 9:
-                start_peak = 70
+            
+            if FILTER == "31_05":
+                if int(run) == 9:
+                    start_peak = 70
+                elif int(run) == 1:
+                    start_peak = 80
+                elif int(run) == 10:
+                    start_peak = 135
+
+            elif FILTER == "30_05":
+                if int(run) == 9:
+                    start_peak = 120
+                elif int(run) == 11:
+                    start_peak = 115
+
             resistance_77k = np.average(y[:start_peak])
             
             max_peak = np.where(y_77k==max(y_77k))[0][0]
             peak_duration = x[N_min_peak] - x[max_peak]
 
             print(f"Average 77K Resistance: {resistance_77k} Ω")
-            print(f"77k Resistance Standard Deviation: {np.std(y[:start_peak])}")
+            print(f"77k Resistance Standard Deviation: {np.std(y[:start_peak])} Ω")
             print(f"Peak duration: {peak_duration} seconds")
-
-        if folder == "magnetic_field":
-            y = y/10**6 # microtesla to T
-            N = 10
-            # for i in range(len(y)/N):
-
 
         if FIT_EXP_CURVE and not PLOT_DISTANCE_RESISTANCE:
             last = N_min_peak
@@ -200,7 +218,7 @@ for folder in folders:
 
                 if folder == "resistance":
                     if SHOW_77K_RESISTANCE:
-                        plot.plot(x[:start_peak], [resistance_77k]*start_peak,pen=PEN(3))
+                        plot.plot(x[:start_peak], [resistance_77k]*start_peak,pen=PEN(5))
 
                     if SHOW_PEAK_DURATION:
                         plot.plot(x[max_peak:N_min_peak], [5e-3]*len(x[max_peak:N_min_peak]),pen=PEN(3))
@@ -217,6 +235,7 @@ for folder in folders:
         print()
 
     j+=1
+    break
 
 
 for i in range(len(windows)):
