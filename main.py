@@ -7,6 +7,7 @@ import serial
 import keyboard
 import numpy as np
 import pyvisa
+from pyvisa.resources import SerialInstrument
 from random import randint
 from threading import Thread
 from pyqtgraph.Qt import QtGui, QtCore
@@ -83,9 +84,8 @@ def begin_thermistor():
 
 
 def get_resistance(device):
-    data = device.query(":MEASure:FRESistance?")
-    print(data.decode('utf-8'))
-    return time.time(), randint(0,100)
+    data = device.query(":MEASure:FRESistance?").replace("\x13","").replace("\x11","")
+    return time.time(), float(data)
 
 
 def detach_kernel_driver(dev, name):

@@ -8,47 +8,6 @@ static uint8_t i = 0;
 void setup() {
   Serial.begin(9600);
 }
-//
-///*
-//OPTION 1: print current resistance value upon request of 'main.py'
-//*/
-//void loop()
-//{
-//  if (ready == 1)
-//  {
-//    while(Serial.available())
-//    {
-//      if (Serial.read() == 'r')
-//      {
-//        get_resistance();
-//      }
-//      delay(5);
-//    }
-//
-//  } else 
-//  {
-//    // start non-stop data collection upon initial 'main.py' request
-//    if (Serial.read() == 's') 
-//    {
-//      ready = 1;
-//    }
-//  }
-//}
-//
-//void get_resistance()
-//{
-//  float r;
-//  uint16_t adc;
-//  adc = analogRead(A0);
-//  r = R_REF * adc/(1024.0 - adc);
-//  Serial.println(String(millis()) + "," + String(r));
-//}
-
-/*
-OPTION 2: constantly print resistance data.
-'main.py' will read the data more slowly. Real-time plot is delayed depending of loop() frequency
-*/
-
 
 void loop()
 {
