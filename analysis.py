@@ -19,34 +19,35 @@ INDEPENDENT = False
 LEGEND = True
 MOVING_AVERAGE = 0
 FILTERS = ["31_05", "05_06", "30_05"]
-# FILTERS = ["05_06"]
+# FILTERS = ["05_06_tin","30_05_Tin"]
+FILTERS = ["31_05"]
 
-JOIN_FILTERS = True
+JOIN_FILTERS = False
 
 FILTER_BY_RUN = [False, False, False]
 EXCLUDE_RUN_FILTER = [False, False, False]
-RUN_FILTER = [[4,8,9,3,10,11,12]]
-RUN_FILTER = [[1,2,8], []]
+# RUN_FILTER = [[4,8,9,3,10,11,12]]
+# RUN_FILTER = [[1,2,8], []]
 RUN_FILTER = [[],[],[]]
 
-EXCLUDE_RUNS = [[]]
 # EXCLUDE_RUNS = [[1,2,3,11,12]] #30_05
 
-EXCLUDE_RUNS = [[],[1,2,3,4,5,6,7,8,9,20], []] #05_06
+# EXCLUDE_RUNS = [[],[1],[1,2,3,4,5,6,7,8,9,20], []] #05_06
+EXCLUDE_RUNS = [[]]
 
 SHOW_MOVE_TIME = False
-SHOW_RAW_DATA = False
+SHOW_RAW_DATA = True
 SHOW_DERIVATIVE = False
 
-PLOT_CURRENT_TIME = True
+PLOT_CURRENT_TIME = False
 
-SHOW_77K_RESISTANCE = False
+SHOW_77K_RESISTANCE = True
 SHOW_PEAK_DURATION = False
 
 FILTER_MAGNET = False
 
 PLOT_DISTANCE_RESISTANCE = False
-PLOT_FIELD_RESISTANCE = True
+PLOT_FIELD_RESISTANCE = False
 
 PLOT_DISTANCE_HIGH_PEAK = False
 PLOT_DISTANCE_LOW_PEAK = False
@@ -91,6 +92,7 @@ colors = [[255,181,98],
 [141,52,71],
 [255,137,175]]
 
+colors=[[230, 25, 75], [60, 180, 75], [255, 225, 25], [0, 130, 200], [245, 130, 48], [145, 30, 180], [70, 240, 240], [240, 50, 230], [210, 245, 60], [250, 190, 212], [0, 128, 128], [220, 190, 255], [170, 110, 40], [255, 250, 200], [128, 0, 0], [170, 255, 195], [128, 128, 0], [255, 215, 180], [0, 0, 128], [128, 128, 128], [255, 255, 255]]
 random.shuffle(colors)
 
 folders = ["magnetic_field", "resistance"]
@@ -131,6 +133,10 @@ def create_window(name, y_u="", d=False):
         x_l = "Magnet Distance"
         x_u = "cm"
     
+    if SHOW_DERIVATIVE:
+        name = "Derivative of R with respect to time"
+        y_u = "Ω / s"
+
     if PLOT_FIELD_RESISTANCE:
         x_l = "Magnetic Field"
         x_u = "T"
@@ -183,8 +189,8 @@ def create_window(name, y_u="", d=False):
 symbols = ["s", "t1", "x"]
 k = 0
 if JOIN_FILTERS and not INDEPENDENT:
-    # window, plot = create_window("Resistance", y_u="Ω", d=SHOW_DERIVATIVE)
-    window, plot = create_window("time", y_u="s", d=SHOW_DERIVATIVE)
+    window, plot = create_window("Tin Resistance", y_u="Ω", d=SHOW_DERIVATIVE)
+    # window, plot = create_window("time", y_u="s", d=SHOW_DERIVATIVE)
 
 
 X = []
@@ -360,6 +366,8 @@ for file_filter in FILTERS:
                     continue
                 
             if SHOW_RAW_DATA:
+                for _ in x: X.append(_)
+                for _ in y: Y.append(_)
                 # if PLOT_CURRENT_TIME and folder=="resistance":
                 #     y = AV_VOLTAGE/y
 
@@ -488,49 +496,5 @@ for file_filter in FILTERS:
         # break
         
     k += 1
-
-
-# d = []
-# X2 = []
-# Y2 = []
-
-# X = np.array(X)
-# Y = np.array(Y)
-
-# for i in range(len(X)):
-#     print(i)
-#     # if X[i] > 250e-6 or X[i]<100e-6:
-#     #     print(f"Bruh: {i}")
-#     #     d.append(i)
-#     # else:
-#     #     X2.append(X[i])
-#     #     Y2.append(Y[i])
-
-#     if Y[i] < 60e-6 or Y[i]>100e-6 and X[i]> 16:
-#         print(X[i])
-#         print(f"Bruh: {i}")
-#         d.append(i)
-#     else:
-#         X2.append(X[i])
-#         Y2.append(Y[i])
-
-
-# # for i in d:
-# # #     del X[i]
-# # #     del Y[i]
-
-# X2 = np.array(X2)
-# Y2 = np.array(Y2)
-
-
-# popt, pcov = curve_fit(quadratic_fit, X2, Y2)
-# # print(f"y = {popt[0]} * X**2 + {popt[1]} * X + {popt[1]}")
-# print(quadratic_fit(X2, *popt))
-# _X = np.linspace(6,19,20)
-# # plot.plot(_X, quadratic_fit(_X, *popt),pen=PEN(3,col=[0,0,0]),symbol="+")
-# window.show()
-
-for i in range(len(windows)):
-    windows[i].show()
 
 input()
